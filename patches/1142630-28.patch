@@ -1,0 +1,19 @@
+diff --git a/modules/mediafield/mediafield.module b/modules/mediafield/mediafield.module
+index 73f9df8..5b30b9b 100644
+--- a/modules/mediafield/mediafield.module
++++ b/modules/mediafield/mediafield.module
+@@ -157,10 +157,10 @@ function mediafield_field_validate($obj_type, $object, $field, $instance, $langc
+     }
+     $result = db_select('file_managed', 'f')
+       ->fields('f')
+-      ->condition('fid', $item['fid'])
+-      ->condition('type', $allowed_types, 'IN')
+-      ->execute()
+-      ->fetchField();
++      ->condition('fid', $item['fid']);
++    if(! in_array('default', $allowed_types ))
++      $result->condition('type', $allowed_types, 'IN');
++    $result->execute()->fetchField();
+     if (!$result) {
+       $errors[$field['field_name']][$langcode][$delta][] = array(
+         'error' => 'media_fid_illegal_value',

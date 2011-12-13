@@ -1,0 +1,79 @@
+<?php
+
+/**
+ * Implementation of hook_form_FORM_ID_alter().
+ */
+function custom_form_comment_node_book_form_alter(&$form, &$form_state, &$form_id) {
+  $form['comment_body']['#after_build'][] = 'custom_customize_comment_form';
+}
+
+/**
+ * After build callback for book comment form.
+ */
+function custom_customize_comment_form($element) {
+  // Set comments to plain_text only & hide options.
+  $element[$element['#language']][0]['format']['format']['#access'] = FALSE;
+  $element[$element['#language']][0]['format']['format']['#value'] = 'plain_text'; 
+  // Hide guidelines for all but plain_text.
+  foreach (element_children($element[$element['#language']][0]['format']['guidelines']) as $format) {
+    if ($format != 'plain_text') {
+      $element[$element['#language']][0]['format']['guidelines'][$format]['#access'] = FALSE;
+    }
+  }
+  return $element; 
+}
+
+/**
+ * Implementation of hook_menu_alter().
+ */
+function custom_menu_alter(&$items) {
+  // Disable core book outline tab.
+  $items['node/%node/outline']['access callback'] = FALSE;
+}
+
+/**
+ * Implementation of hook_menu().
+ */
+function custom_menu() {
+  $items = array();
+  // Custom reorder book tab. We don't need the BookMadeSimple module for this.
+  $items['node/%node/reorder'] = array(
+    'title' => t('Reorder book'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('custom_book_reorder', 1),
+    'access callback' => 'custom_book_reorder_access',
+    'access arguments' => array(1),
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 2,
+  );
+  return $items;
+}
+
+/**
+ * Book reorder menu access callback.
+ */
+function custom_book_reorder_access($node) {
+  $is_book = isset($node->book) && $node->book['bid'];
+  $user_access = _book_outline_access($node);
+  return $is_book && $user_access;
+}
+
+/**
+ * Book reorder menu callback.
+ */
+function custom_book_reorder($form, $form_state, $node) {
+  module_load_include('inc', 'book', 'book.admin');
+  // @todo why does reordering not save at this path?
+  #return drupal_get_form('book_admin_edit', node_load($node->book['bid']));
+  // Stick with drupal_goto() for now.
+  $query = array('destination' => "node/$node->nid");
+  drupal_goto("admin/content/book/{$node->book['bid']}", array('query' => $query));
+}
+
+/**
+ * Implementation of hook_admin_paths_alter().
+ */
+function custom_admin_paths_alter(&$paths) {
+  // Treat the reorder book form as administrative.
+  $paths['node/*/reorder'] = TRUE;
+}

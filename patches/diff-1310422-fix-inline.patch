@@ -1,0 +1,34 @@
+From 8ccf846aefe008bfff6218a86efa77f1a50ef947 Mon Sep 17 00:00:00 2001
+From: Dave Hall <dave.hall@skwashd.com>
+Date: Sat, 15 Oct 2011 13:02:27 +1100
+Subject: [PATCH] Issue #1310422 by skwashd: Fix ajax wrapper so inline diff works
+
+---
+ diff.module |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/diff.module b/diff.module
+index 7ea16a6..61a4147 100644
+--- a/diff.module
++++ b/diff.module
+@@ -318,7 +318,7 @@ function diff_inline_form($form, $form_state, $node, $revisions) {
+     '#default_value' => (arg(2) === 'revisions' && arg(3) === $node->vid) ? $node->vid : 0,
+     '#ajax' => array(
+       'callback' => 'diff_inline_ajax',
+-      'wrapper' => "diff-inline-{$node->nid}",
++      'wrapper' => "node-{$node->nid}",
+       'method' => 'replace',
+     ),
+   );
+@@ -344,7 +344,7 @@ function diff_inline_ajax($form, $form_state) {
+   module_load_include('inc', 'diff', 'diff.pages');
+   $node = $form['node']['#value'];
+   $vid = isset($form_state['values']['revision']) ? $form_state['values']['revision'] : 0;
+-  return "<div id='diff-inline-{$node->nid}'>" . diff_inline_show($node, $vid) . "</div>";
++  return "<div id='node-{$node->nid}'>" . diff_inline_show($node, $vid) . "</div>";
+ }
+ 
+ /**
+-- 
+1.7.4.1
+

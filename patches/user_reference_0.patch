@@ -1,0 +1,26 @@
+diff --git a/user_reference/user_reference.module b/references/user_reference/user_reference.module
+index 9340231..0c9be3c
+--- a/user_reference/user_reference.module
++++ b/user_reference/user_reference.module
+@@ -163,11 +163,16 @@ function _user_reference_view_settings_validate($element, &$form_state, $form) {
+     $display = '';
+   }
+
+-  // Explode the 'args' string into an actual array. Beware, explode() turns an
+-  // empty string into an array with one empty string. We'll need an empty array
+-  // instead.
+-  $args_string = trim($element['args']['#value']);
+-  $args = ($args_string === '') ? array() : array_map('trim', explode(',', $args_string));
++  if (isset($element['no_view_help'])) {
++    $args = array();
++  }
++  else {
++    // Explode the 'args' string into an actual array. Beware, explode() turns an
++    // empty string into an array with one empty string. We'll need an empty array
++    // instead.
++    $args_string = trim($element['args']['#value']);
++    $args = ($args_string === '') ? array() : array_map('trim', explode(',', $args_string));
++  }
+
+   $value = array('view_name' => $view, 'display_name' => $display, 'args' => $args);
+   form_set_value($element, $value, $form_state);
