@@ -1,0 +1,18 @@
+
+/**
+ * This stylesheet is only called by Wysiwyg on book-formatted form elements.
+ * @see paw.css for display.
+ */
+
+p,span.paw-small {
+  color: #ccc;
+  background-color: #fff;
+}
+span.paw-medium {
+  color: #3B3B3B;
+  background-color: #fff;
+}
+span.paw-large {
+  color: #3B3B3B;
+  background-color: #ed5; /*#afa*/
+}

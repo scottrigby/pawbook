@@ -1,10 +1,4 @@
 
-.paw-small {font-size: 12px;}
-.paw-medium {font-size: 24px;}
-.paw-large {font-size: 48px;}
-
-.diff-deleted {background-color: #FEF5F1; text-decoration: line-through;}
-
 /* Embedded image styles from Basekamp.com */
 .field-field-event-images {
     float: right;
@@ -24,4 +18,23 @@ ul.menu li {
  */
 body.node-type-book #main-menu-links li.menu-448 a {
   background: #FFF;
+}
+
+/**
+ * This only displays on field display (not forms).
+ * @see book-format.css for forms.
+ */
+
+.field-format-book p,
+.field-format-book span.paw-small {
+  color: #ccc;
+  background-color: #fff;
+}
+.field-format-book span.paw-medium {
+  color: #3B3B3B;
+  background-color: #fff;
+}
+.field-format-book span.paw-large {
+  color: #3B3B3B;
+  background-color: #ed5; /*#afa*/
 }

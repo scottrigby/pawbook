@@ -46,9 +46,9 @@ body {
 }
 
 /* ---------- Book Pages ---------- */
-/* Hide elements from book print page */
-ul.links.inline li.comment-add, /* Comment links */
-.field-name-field-recording { /* Recording field */
+
+/* Hide comment links */
+ul.links.inline li.comment-add {
   display: none;
 }
 
