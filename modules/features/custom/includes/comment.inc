@@ -6,7 +6,7 @@
  */
 
 /**
- * Implementation of hook_form_FORM_ID_alter().
+ * Implements hook_form_FORM_ID_alter().
  */
 function custom_form_comment_node_book_form_alter(&$form, &$form_state, &$form_id) {
   $form['comment_body']['#after_build'][] = 'custom_customize_comment_form';

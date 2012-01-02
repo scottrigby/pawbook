@@ -6,7 +6,7 @@
  */
 
 /**
- * Implementation of hook_menu().
+ * Implements hook_menu().
  */
 function custom_menu() {
   $items = array();
@@ -18,7 +18,7 @@ function custom_menu() {
 }
 
 /**
- * Implementation of hook_menu_alter().
+ * Implements hook_menu_alter().
  */
 function custom_menu_alter(&$items) {
   // Custom book items.
