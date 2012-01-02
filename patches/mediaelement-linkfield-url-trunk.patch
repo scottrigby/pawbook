@@ -1,0 +1,22 @@
+diff --git a/mediaelement.module b/mediaelement.module
+index 7c3cdd2..53d0778 100644
+--- a/mediaelement.module
++++ b/mediaelement.module
+@@ -103,6 +103,8 @@ function mediaelement_field_formatter_view($entity_type, $entity, $field, $insta
+   $element = array();
+   $path = drupal_get_path('module', 'mediaelement');
+   foreach ($items as $delta => $item) {
++    // file and link_field keep the path/link in a different property name.
++    $path_name = ($field['type'] == 'link_field') ? 'url' : 'uri';
+     $settings = $display['settings'];
+     $js_settings = array();
+     $js_settings['opts'] = array();
+@@ -119,7 +121,7 @@ function mediaelement_field_formatter_view($entity_type, $entity, $field, $insta
+     $class = 'mediaelement-formatter-identifier-' . time() . '-' . $id++;
+     $element[$delta] = array(
+       '#attributes' => array(
+-        'src' => file_create_url($item['uri']),
++        'src' => file_create_url($item[$path_name]),
+         'class' => $class,
+       ),
+       '#settings' => $settings,
