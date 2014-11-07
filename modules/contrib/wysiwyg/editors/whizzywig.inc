@@ -20,6 +20,7 @@ function wysiwyg_whizzywig_editor() {
       ),
     ),
     'version callback' => 'wysiwyg_whizzywig_version',
+    'settings form callback' => 'wysiwyg_whizzywig_settings_form',
     'settings callback' => 'wysiwyg_whizzywig_settings',
     'plugin callback' => 'wysiwyg_whizzywig_plugins',
     'versions' => array(
@@ -63,6 +64,15 @@ function wysiwyg_whizzywig_version($editor) {
 }
 
 /**
+ * Enhances the editor profile settings form for Whizzywig.
+ */
+function wysiwyg_whizzywig_settings_form(&$form, &$form_state) {
+  $form['basic']['language']['#access'] = FALSE;
+  // @todo CSS settings are currently not used.
+  $form['css']['#access'] = FALSE;
+}
+
+/**
  * Return runtime editor settings for a given wysiwyg profile.
  *
  * @param $editor
@@ -102,15 +112,16 @@ function wysiwyg_whizzywig_settings($editor, $config, $theme) {
   }
 
   // Add editor content stylesheet.
+  // @todo CSS settings are currently not used.
   if (isset($config['css_setting'])) {
     if ($config['css_setting'] == 'theme') {
-      $css = path_to_theme() . '/style.css';
+      $css = drupal_get_path('theme', variable_get('theme_default', NULL)) . '/style.css';
       if (file_exists($css)) {
         $settings['externalCSS'] = base_path() . $css;
       }
     }
     elseif ($config['css_setting'] == 'self' && isset($config['css_path'])) {
-      $settings['externalCSS'] = strtr($config['css_path'], array('%b' => base_path(), '%t' => path_to_theme()));
+      $settings['externalCSS'] = strtr($config['css_path'], array('%b' => base_path(), '%t' => drupal_get_path('theme', variable_get('theme_default', NULL))));
     }
   }
 

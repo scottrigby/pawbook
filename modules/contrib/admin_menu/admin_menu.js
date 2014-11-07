@@ -15,7 +15,6 @@ Drupal.behaviors.adminMenu = {
     // Initialize settings.
     settings.admin_menu = $.extend({
       suppress: false,
-      overlay_child: false,
       margin_top: false,
       position_fixed: false,
       tweak_modules: false,
@@ -33,14 +32,16 @@ Drupal.behaviors.adminMenu = {
     var $adminMenu = $('#admin-menu:not(.admin-menu-processed)', context);
     // Client-side caching; if administration menu is not in the output, it is
     // fetched from the server and cached in the browser.
-    if (!$adminMenu.length && settings.admin_menu.hash && !settings.admin_menu.overlay_child) {
+    if (!$adminMenu.length && settings.admin_menu.hash) {
       Drupal.admin.getCache(settings.admin_menu.hash, function (response) {
           if (typeof response == 'string' && response.length > 0) {
-            $('body', context).prepend(response);
+            $('body', context).append(response);
           }
           var $adminMenu = $('#admin-menu:not(.admin-menu-processed)', context);
           // Apply our behaviors.
           Drupal.admin.attachBehaviors(context, settings, $adminMenu);
+          // Allow resize event handlers to recalculate sizes/positions.
+          $(window).triggerHandler('resize');
       });
     }
     // If the menu is in the output already, this means there is a new version.
@@ -71,7 +72,7 @@ Drupal.behaviors.adminMenuCollapsePermissions = {
       // Freeze width of first column to prevent jumping.
       $('#permissions th:first', context).css({ width: $('#permissions th:first', context).width() });
       // Attach click handler.
-      $('#permissions tr:has(td.module)', context).once('admin-menu-tweak-permissions', function () {
+      $modules = $('#permissions tr:has(td.module)', context).once('admin-menu-tweak-permissions', function () {
         var $module = $(this);
         $module.bind('click.admin-menu', function () {
           // @todo Replace with .nextUntil() in jQuery 1.4.
@@ -83,7 +84,12 @@ Drupal.behaviors.adminMenuCollapsePermissions = {
             $row.toggleClass('element-hidden');
           });
         });
-      }).trigger('click.admin-menu');
+      });
+      // Collapse all but the targeted permission rows set.
+      if (window.location.hash.length) {
+        $modules = $modules.not(':has(' + window.location.hash + ')');
+      }
+      $modules.trigger('click.admin-menu');
     }
   }
 };
@@ -129,6 +135,22 @@ Drupal.admin.getCache = function (hash, onSuccess) {
 };
 
 /**
+ * TableHeader callback to determine top viewport offset.
+ *
+ * @see toolbar.js
+ */
+Drupal.admin.height = function() {
+  var $adminMenu = $('#admin-menu');
+  var height = $adminMenu.outerHeight();
+  // In IE, Shadow filter adds some extra height, so we need to remove it from
+  // the returned height.
+  if ($adminMenu.css('filter') && $adminMenu.css('filter').match(/DXImageTransform\.Microsoft\.Shadow/)) {
+    height -= $adminMenu.get(0).filters.item("DXImageTransform.Microsoft.Shadow").strength;
+  }
+  return height;
+};
+
+/**
  * @defgroup admin_behaviors Administration behaviors.
  * @{
  */
@@ -160,9 +182,13 @@ Drupal.admin.behaviors.positionFixed = function (context, settings, $adminMenu) 
  */
 Drupal.admin.behaviors.pageTabs = function (context, settings, $adminMenu) {
   if (settings.admin_menu.tweak_tabs) {
-    $('ul.tabs.primary li', context).addClass('admin-menu-tab').appendTo('#admin-menu-wrapper > ul');
-    $('ul.tabs.secondary', context).appendTo('#admin-menu-wrapper > ul > li.admin-menu-tab.active').removeClass('secondary');
-    $('ul.tabs.primary', context).remove();
+    var $tabs = $(context).find('ul.tabs.primary');
+    $adminMenu.find('#admin-menu-wrapper > ul').eq(1)
+      .append($tabs.find('li').addClass('admin-menu-tab'));
+    $(context).find('ul.tabs.secondary')
+      .appendTo('#admin-menu-wrapper > ul > li.admin-menu-tab.active')
+      .removeClass('secondary');
+    $tabs.remove();
   }
 };
 
@@ -193,18 +219,6 @@ Drupal.admin.behaviors.destination = function (context, settings, $adminMenu) {
  *   it will not run last.
  */
 Drupal.admin.behaviors.hover = function (context, settings, $adminMenu) {
-  // Hover emulation for IE 6.
-  if ($.browser.msie && parseInt(jQuery.browser.version) == 6) {
-    $('li', $adminMenu).hover(
-      function () {
-        $(this).addClass('iehover');
-      },
-      function () {
-        $(this).removeClass('iehover');
-      }
-    );
-  }
-
   // Delayed mouseout.
   $('li.expandable', $adminMenu).hover(
     function () {
@@ -224,6 +238,144 @@ Drupal.admin.behaviors.hover = function (context, settings, $adminMenu) {
       }, 400);
     }
   );
+};
+
+/**
+ * Apply the search bar functionality.
+ */
+Drupal.admin.behaviors.search = function (context, settings, $adminMenu) {
+  // @todo Add a HTML ID.
+  var $input = $('input.admin-menu-search', $adminMenu);
+  // Initialize the current search needle.
+  var needle = $input.val();
+  // Cache of all links that can be matched in the menu.
+  var links;
+  // Minimum search needle length.
+  var needleMinLength = 2;
+  // Append the results container.
+  var $results = $('<div />').insertAfter($input);
+
+  /**
+   * Executes the search upon user input.
+   */
+  function keyupHandler() {
+    var matches, $html, value = $(this).val();
+    // Only proceed if the search needle has changed.
+    if (value !== needle) {
+      needle = value;
+      // Initialize the cache of menu links upon first search.
+      if (!links && needle.length >= needleMinLength) {
+        // @todo Limit to links in dropdown menus; i.e., skip menu additions.
+        links = buildSearchIndex($adminMenu.find('li:not(.admin-menu-action, .admin-menu-action li) > a'));
+      }
+      // Empty results container when deleting search text.
+      if (needle.length < needleMinLength) {
+        $results.empty();
+      }
+      // Only search if the needle is long enough.
+      if (needle.length >= needleMinLength && links) {
+        matches = findMatches(needle, links);
+        // Build the list in a detached DOM node.
+        $html = buildResultsList(matches);
+        // Display results.
+        $results.empty().append($html);
+      }
+    }
+  }
+
+  /**
+   * Builds the search index.
+   */
+  function buildSearchIndex($links) {
+    return $links
+      .map(function () {
+        var text = (this.textContent || this.innerText);
+        // Skip menu entries that do not contain any text (e.g., the icon).
+        if (typeof text === 'undefined') {
+          return;
+        }
+        return {
+          text: text,
+          textMatch: text.toLowerCase(),
+          element: this
+        };
+      });
+  }
+
+  /**
+   * Searches the index for a given needle and returns matching entries.
+   */
+  function findMatches(needle, links) {
+    var needleMatch = needle.toLowerCase();
+    // Select matching links from the cache.
+    return $.grep(links, function (link) {
+      return link.textMatch.indexOf(needleMatch) !== -1;
+    });
+  }
+
+  /**
+   * Builds the search result list in a detached DOM node.
+   */
+  function buildResultsList(matches) {
+    var $html = $('<ul class="dropdown admin-menu-search-results" />');
+    $.each(matches, function () {
+      var result = this.text;
+      var $element = $(this.element);
+
+      // Check whether there is a top-level category that can be prepended.
+      var $category = $element.closest('#admin-menu-wrapper > ul > li');
+      var categoryText = $category.find('> a').text()
+      if ($category.length && categoryText) {
+        result = categoryText + ': ' + result;
+      }
+
+      var $result = $('<li><a href="' + $element.attr('href') + '">' + result + '</a></li>');
+      $result.data('original-link', $(this.element).parent());
+      $html.append($result);
+    });
+    return $html;
+  }
+
+  /**
+   * Highlights selected result.
+   */
+  function resultsHandler(e) {
+    var $this = $(this);
+    var show = e.type === 'mouseenter' || e.type === 'focusin';
+    $this.trigger(show ? 'showPath' : 'hidePath', [this]);
+  }
+
+  /**
+   * Closes the search results and clears the search input.
+   */
+  function resultsClickHandler(e, link) {
+    var $original = $(this).data('original-link');
+    $original.trigger('mouseleave');
+    $input.val('').trigger('keyup');
+  }
+
+  /**
+   * Shows the link in the menu that corresponds to a search result.
+   */
+  function highlightPathHandler(e, link) {
+    if (link) {
+      var $original = $(link).data('original-link');
+      var show = e.type === 'showPath';
+      // Toggle an additional CSS class to visually highlight the matching link.
+      // @todo Consider using same visual appearance as regular hover.
+      $original.toggleClass('highlight', show);
+      $original.trigger(show ? 'mouseenter' : 'mouseleave');
+    }
+  }
+
+  // Attach showPath/hidePath handler to search result entries.
+  $results.delegate('li', 'mouseenter mouseleave focus blur', resultsHandler);
+  // Hide the result list after a link has been clicked, useful for overlay.
+  $results.delegate('li', 'click', resultsClickHandler);
+  // Attach hover/active highlight behavior to search result entries.
+  $adminMenu.delegate('.admin-menu-search-results li', 'showPath hidePath', highlightPathHandler);
+  // Attach the search input event handler.
+  $input.bind('keyup search', keyupHandler);
 };
 
 /**

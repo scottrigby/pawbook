@@ -5,9 +5,9 @@ core = 7.x
 files[] = token_test.module
 hidden = TRUE
 
-; Information added by drupal.org packaging script on 2011-11-18
-version = "7.x-1.x-dev"
+; Information added by Drupal.org packaging script on 2014-06-19
+version = "7.x-1.5+4-dev"
 core = "7.x"
 project = "token"
-datestamp = "1321618970"
+datestamp = "1403222028"
 
